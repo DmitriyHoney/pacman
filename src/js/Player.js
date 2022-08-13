@@ -1,5 +1,7 @@
 export class Player {
-  constructor(canvas, ctx) {
+  constructor(canvas, ctx, coordsObstacle = []) {
+    this.coordsObstacle = coordsObstacle;
+    this._historyKeyDown = undefined;
     this._ctx = ctx;
     this._canvas = canvas;
     this._diffCoords = {
@@ -8,17 +10,18 @@ export class Player {
     };
     this._coords = {
       x: this._canvas.width / 2,
-      y: 95
+      y: 90
     };
     this._style = {
       color: 'yellow',
       lineWidth: 1,
-      radius: 12
+      radius: 7
     };
     this.KEY_MOVING = [
       'ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'Space'
     ];
     this.moveInterval = undefined;
+    this._figureSize = this._style.radius + (this._style.lineWidth * 2)
     this.initHandleClickEvents();
   }
   initHandleClickEvents() {
@@ -29,17 +32,47 @@ export class Player {
   }
   stopMoving() {
     this.clearMoveInterval();
+    this.clearHistoryKeyDown();
   }
-  keyDownHandler(e) {
-    if (!this.KEY_MOVING.includes(e.code)) {
-      console.warn(`Access keys for moving: ${this.KEY_MOVING}`);
-      return;
+  updateHistoryKeyDown(keyCode) {
+    this._historyKeyDown = keyCode;
+  }
+  clearHistoryKeyDown() {
+    this._historyKeyDown = undefined;
+  }
+  isNewWayAccess(keyCode) {
+    let x = this._coords.x;
+    let y = this._coords.y;
+    switch (keyCode) {
+    case 'ArrowRight':
+      x += this._diffCoords.x;
+      break;
+    case 'ArrowLeft':
+      x -= this._diffCoords.x;
+      break;
+    case 'ArrowUp':
+      y -= this._diffCoords.y;
+      break;
+    case 'ArrowDown':
+      y += this._diffCoords.y;
+      break;
     }
+    if (this.checkForCollision(x, y)) {
+      return false;
+    }
+    return true;
+  }
+  handleMoveClick(keyCode) {
     this.clearMoveInterval();
     this.moveInterval = setInterval(() => {
+      if (this._historyKeyDown && this.isNewWayAccess(this._historyKeyDown)) {
+        this.handleMoveClick(this._historyKeyDown);
+        this.clearHistoryKeyDown();
+        return;
+      }
       let x = this._coords.x;
       let y = this._coords.y;
-      switch (e.code) {
+      switch (keyCode) {
       case 'Space':
         this.stopMoving();
         break;
@@ -56,40 +89,48 @@ export class Player {
         y += this._diffCoords.y;
         break;
       }
-      this.moveAndCheckCollision(x, y);
+      if (this.checkCollisionDisplaySize(x, y)) {
+        this.stopMoving();
+        return;
+      }
+      if (this.checkForCollision(x, y)) {
+        /*
+          если сейчас повернуть нельзя то запомни направление
+          и когда предоставится возможность поверни
+        */
+        this.stopMoving();
+        return;
+      }
+      this.move(x, y);
     }, 20);
   }
-  moveAndCheckCollision(x, y) {
-    if (this.checkForCollision()) {
-      this.stopMoving();
-      // return;
+  keyDownHandler(e) {
+    if (!this.KEY_MOVING.includes(e.code)) {
+      console.warn(`Access keys for moving: ${this.KEY_MOVING}`);
+      return;
     }
+    if (!this.isNewWayAccess(e.code)) {
+      this.updateHistoryKeyDown(e.code);
+      return;
+    };
+    this.handleMoveClick(e.code);
+  }
+  move(x, y) {
     this._coords = { x, y };
   }
-  checkForCollision() {
-    // Перебираем все пиксели лабиринта и инвертируем их цвет
-    const { x, y } = this._coords;
-    const imgData = this._ctx.getImageData(x - 1, y - 1, 15 + 2, 15 + 2);
-    const pixels = imgData.data;
-
-    // Получаем данные для одного пикселя
-    for (let i = 0; i < pixels.length; i += 4) {
-      const red = pixels[i];
-      const green = pixels[i + 1];
-      const blue = pixels[i + 2];
-      // const alpha = pixels[i + 3];
-      // Смотрим на наличие черного цвета стены,
-      // что указывает на столкновение
-      if (red > 30 && green > 30 && blue > 30) {
-        return true;
-      }
-      // Смотрим на наличие серого цвета краев,
-      // что указывает на столкновение
-      // if (red === 169 && green === 169 && blue === 169) {
-      //   return true;
-      // }
+  checkCollisionDisplaySize(x, y) {
+    const checkLimitDisplayX = x - this._figureSize < 0 || x + this._figureSize > this._canvas.width;
+    const checkLimitDisplayY = y - this._figureSize < 0 || y + this._figureSize > this._canvas.height;
+    const checkLimitDisplay = checkLimitDisplayX || checkLimitDisplayY;
+    return checkLimitDisplay;
+  }
+  checkForCollision(x, y) {
+    for (const [ x1, x2, y1, y2 ] of this.coordsObstacle) {
+      const checkX = x + this._figureSize >= x1 && x - this._figureSize <= x2;
+      const checkY = y + this._figureSize >= y1 && y - this._figureSize <= y2;
+      const checkXY = checkX && checkY;
+      if (checkXY) return true;
     }
-    // Столкновения не было
     return false;
   }
   render() {
@@ -100,7 +141,6 @@ export class Player {
     this._ctx.fillStyle = color;
     this._ctx.fill();
     this._ctx.lineWidth = lineWidth;
-    this._ctx.strokeStyle = color;
     this._ctx.stroke();
   }
 }

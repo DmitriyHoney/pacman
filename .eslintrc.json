@@ -137,7 +137,6 @@
       "always"
     ],
     "operator-linebreak": [
-      "error",
       "after"
     ],
     "semi-spacing": [
