@@ -95,7 +95,7 @@
     "max-len": [
       "error",
       {
-        "code": 80,
+        "code": 105,
         "ignoreUrls": true
       }
     ],
@@ -137,7 +137,8 @@
       "always"
     ],
     "operator-linebreak": [
-      "after"
+      "error",
+      "before"
     ],
     "semi-spacing": [
       "error",

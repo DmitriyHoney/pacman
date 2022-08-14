@@ -1,7 +1,17 @@
 export class Player {
-  constructor(canvas, ctx, coordsObstacle = [], coordsPortal = []) {
+  constructor(
+    canvas,
+    ctx,
+    coordsObstacle = [],
+    coordsPortal = [],
+    coinCoords = [],
+    rootPlayer = true
+  ) {
+    this.score = 0;
+    this._rootPlayer = rootPlayer;
     this.coordsObstacle = coordsObstacle;
     this.coordsPortal = coordsPortal;
+    this.coinCoords = coinCoords;
     this._historyKeyDown = undefined;
     this._ctx = ctx;
     this._canvas = canvas;
@@ -22,8 +32,22 @@ export class Player {
       'ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'Space'
     ];
     this.moveInterval = undefined;
-    this._figureSize = this._style.radius + (this._style.lineWidth * 2)
+    this._figureSize = this._style.radius + (this._style.lineWidth * 2);
     this.initHandleClickEvents();
+    this._events = {};
+  }
+  incScore(incValue) {
+    this.score += incValue;
+  }
+  on(eventType, cb) {
+    this._events[eventType] = cb;
+  }
+  emit(eventType, data) {
+    if (!this._events[eventType]) {
+      console.warn(`Event type ${eventType} does not defined`);
+      return;
+    }
+    this._events[eventType](data);
   }
   initHandleClickEvents() {
     document.addEventListener('keydown', this.keyDownHandler.bind(this), false);
@@ -65,7 +89,6 @@ export class Player {
     return !this.checkForCollision(x, y);
   }
   handleMoveClick(keyCode) {
-
     this.clearMoveInterval();
     this.moveInterval = setInterval(() => {
       if (this._historyKeyDown && this.isNewWayAccess(this._historyKeyDown)) {
@@ -89,6 +112,10 @@ export class Player {
         this.stopMoving();
         return;
       }
+      // Проверка что наш игрок находится над coin
+      if (this._rootPlayer && this.checkPlayerInsideCoin(x, y)) {
+        this.emit('eatCoin', { x, y });
+      }
       this.move(x, y);
     }, 20);
   }
@@ -100,7 +127,7 @@ export class Player {
     if (!this.isNewWayAccess(e.code)) {
       this.updateHistoryKeyDown(e.code);
       return;
-    };
+    }
     this.handleMoveClick(e.code);
   }
   move(x, y) {
@@ -108,7 +135,9 @@ export class Player {
   }
   checkPlayerInsidePortal(x, y) {
     const checkPortal = (coords, limit, isLess = true) => {
+      /*eslint-disable */
       const [x1, x2, y1, y2] = coords;
+      /*eslint-enable */
       const checkPortalX = isLess ? x - this._figureSize < limit : x + this._figureSize > limit;
       const checkPortalY = y - this._figureSize < y2 && y + this._figureSize > y1;
       const checkPortalXY = checkPortalX && checkPortalY;
@@ -120,12 +149,21 @@ export class Player {
       const checkRightPortal = checkPortal(rightPortal, rightPortal[1], false);
       let newPlayerCoords = undefined;
       if (checkLeftPortal) {
-        newPlayerCoords = [ rightPortal[0], rightPortal[2] + this._figureSize ]
+        newPlayerCoords = [ rightPortal[0], rightPortal[2] + this._figureSize ];
       } else if (checkRightPortal) {
-        newPlayerCoords = [ leftPortalCoords[1], leftPortalCoords[2] + this._figureSize ]
+        newPlayerCoords = [ leftPortalCoords[1], leftPortalCoords[2] + this._figureSize ];
       }
       return checkLeftPortal || checkRightPortal ? newPlayerCoords : undefined;
     }
+  }
+  checkPlayerInsideCoin(x, y) {
+    for (const [ x1, x2, y1, y2 ] of this.coinCoords) {
+      const checkX = x + this._figureSize >= x1 && x - this._figureSize <= x2;
+      const checkY = y + this._figureSize >= y1 && y - this._figureSize <= y2;
+      const checkXY = checkX && checkY;
+      if (checkXY) return true;
+    }
+    return false;
   }
   checkCollisionDisplaySize(x, y) {
     const checkLimitDisplayX = x - this._figureSize < 0 || x + this._figureSize > this._canvas.width;
