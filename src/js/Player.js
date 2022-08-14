@@ -1,6 +1,7 @@
 export class Player {
-  constructor(canvas, ctx, coordsObstacle = []) {
+  constructor(canvas, ctx, coordsObstacle = [], coordsPortal = []) {
     this.coordsObstacle = coordsObstacle;
+    this.coordsPortal = coordsPortal;
     this._historyKeyDown = undefined;
     this._ctx = ctx;
     this._canvas = canvas;
@@ -40,7 +41,7 @@ export class Player {
   clearHistoryKeyDown() {
     this._historyKeyDown = undefined;
   }
-  isNewWayAccess(keyCode) {
+  calculateNewCoordsByKeyCode(keyCode) {
     let x = this._coords.x;
     let y = this._coords.y;
     switch (keyCode) {
@@ -57,12 +58,14 @@ export class Player {
       y += this._diffCoords.y;
       break;
     }
-    if (this.checkForCollision(x, y)) {
-      return false;
-    }
-    return true;
+    return [x, y];
+  }
+  isNewWayAccess(keyCode) {
+    const [x, y] = this.calculateNewCoordsByKeyCode(keyCode);
+    return !this.checkForCollision(x, y);
   }
   handleMoveClick(keyCode) {
+
     this.clearMoveInterval();
     this.moveInterval = setInterval(() => {
       if (this._historyKeyDown && this.isNewWayAccess(this._historyKeyDown)) {
@@ -70,34 +73,19 @@ export class Player {
         this.clearHistoryKeyDown();
         return;
       }
-      let x = this._coords.x;
-      let y = this._coords.y;
-      switch (keyCode) {
-      case 'Space':
-        this.stopMoving();
-        break;
-      case 'ArrowRight':
-        x += this._diffCoords.x;
-        break;
-      case 'ArrowLeft':
-        x -= this._diffCoords.x;
-        break;
-      case 'ArrowUp':
-        y -= this._diffCoords.y;
-        break;
-      case 'ArrowDown':
-        y += this._diffCoords.y;
-        break;
-      }
-      if (this.checkCollisionDisplaySize(x, y)) {
+      if (keyCode === 'Space') {
         this.stopMoving();
         return;
       }
-      if (this.checkForCollision(x, y)) {
-        /*
-          если сейчас повернуть нельзя то запомни направление
-          и когда предоставится возможность поверни
-        */
+      let [x, y] = this.calculateNewCoordsByKeyCode(keyCode);
+      const newPortalCoords = this.checkPlayerInsidePortal(x, y);
+      if (newPortalCoords) {
+        x = newPortalCoords[0];
+        y = newPortalCoords[1] + 1;
+        this.move(x, y);
+        return;
+      }
+      if (this.checkForCollision(x, y) || this.checkCollisionDisplaySize(x, y)) {
         this.stopMoving();
         return;
       }
@@ -117,6 +105,27 @@ export class Player {
   }
   move(x, y) {
     this._coords = { x, y };
+  }
+  checkPlayerInsidePortal(x, y) {
+    const checkPortal = (coords, limit, isLess = true) => {
+      const [x1, x2, y1, y2] = coords;
+      const checkPortalX = isLess ? x - this._figureSize < limit : x + this._figureSize > limit;
+      const checkPortalY = y - this._figureSize < y2 && y + this._figureSize > y1;
+      const checkPortalXY = checkPortalX && checkPortalY;
+      return checkPortalXY;
+    };
+    if (this.coordsPortal.length) {
+      const [ leftPortalCoords, rightPortal ] = this.coordsPortal;
+      const checkLeftPortal = checkPortal(leftPortalCoords, leftPortalCoords[0]);
+      const checkRightPortal = checkPortal(rightPortal, rightPortal[1], false);
+      let newPlayerCoords = undefined;
+      if (checkLeftPortal) {
+        newPlayerCoords = [ rightPortal[0], rightPortal[2] + this._figureSize ]
+      } else if (checkRightPortal) {
+        newPlayerCoords = [ leftPortalCoords[1], leftPortalCoords[2] + this._figureSize ]
+      }
+      return checkLeftPortal || checkRightPortal ? newPlayerCoords : undefined;
+    }
   }
   checkCollisionDisplaySize(x, y) {
     const checkLimitDisplayX = x - this._figureSize < 0 || x + this._figureSize > this._canvas.width;
