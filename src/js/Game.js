@@ -10,6 +10,7 @@ export class Game {
 
     const { coordsObstacle, portalCoords, coinCoords, _cellWidth } = this._board;
     this._player = new Player(canvas, ctx, coordsObstacle, portalCoords, coinCoords);
+    // this._hunter1 = new Player(canvas, ctx, coordsObstacle, portalCoords, coinCoords, false, 'green');
 
     this._player.on('eatCoin', ({ x, y }) => {
       const rowIdx = Math.floor(y / _cellWidth);
@@ -22,6 +23,7 @@ export class Game {
 
     this._board.render(() => {
       this._player.render();
+      // this._hunter1.render();
     });
   }
 }
