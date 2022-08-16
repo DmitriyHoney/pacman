@@ -1,4 +1,4 @@
-import { Player } from './Player.js';
+import { Player, Hunter } from './Player.js';
 import { GameBoard } from './GameBoard.js';
 import { MAP_STATUS } from './helpers/index.js';
 
@@ -9,8 +9,26 @@ export class Game {
     this._board = new GameBoard(canvas, ctx, this._mapTemplate);
 
     const { coordsObstacle, portalCoords, coinCoords, _cellWidth } = this._board;
-    this._player = new Player(canvas, ctx, coordsObstacle, portalCoords, coinCoords);
-    // this._hunter1 = new Player(canvas, ctx, coordsObstacle, portalCoords, coinCoords, false, 'green');
+    this._player = new Player(
+      canvas,
+      ctx, {
+        obstacle: coordsObstacle,
+        portal: portalCoords,
+        coin: coinCoords,
+        map: mapTemplate
+      }
+    );
+
+    this._hunter1 = new Hunter(
+      canvas,
+      ctx, {
+        obstacle: coordsObstacle,
+        portal: portalCoords,
+        coin: coinCoords,
+        map: mapTemplate
+      },
+      'green'
+    );
 
     this._player.on('eatCoin', ({ x, y }) => {
       const rowIdx = Math.floor(y / _cellWidth);
@@ -23,7 +41,7 @@ export class Game {
 
     this._board.render(() => {
       this._player.render();
-      // this._hunter1.render();
+      this._hunter1.render();
     });
   }
 }
