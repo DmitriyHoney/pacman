@@ -8,73 +8,95 @@ export class GameBoard {
     this.interval = undefined;
     this.timeUpdateMS = 10;
     this._cellWidth = 20;
+    this.mapAllPoints = [];
     this.coordsObstacle = [];
     this.portalCoords = [];
     this.coinCoords = [];
+    this.crossRoadCoords = [];
     this.renderFunctionsByKey = {
-      0: (row, col) => this.renderEmpty(row, col),
-      1: (row, col) => this.renderFigure(row, col),
-      2: (row, col) => this.renderPortal(row, col),
-      3: (row, col) => this.renderCoin(row, col),
+      0: (x, y) => this.renderEmpty(x, y),
+      1: (x, y) => this.renderFigure(x, y),
+      2: (x, y) => this.renderPortal(x, y),
+      3: (x, y) => this.renderCoin(x, y),
     };
+    this.initAllMapPoints();
     this.initPortalCoords();
     this.initCoordsObstacle();
     this.initCoordsCoin();
+    // this.initCoordsCrossRoad();
   }
-  renderFigure(row, col) {
+
+  renderFigure(x, y) {
     this._ctx.fillStyle = '#0370e8';
-    this._ctx.fillRect(row, col, this._cellWidth, this._cellWidth);
+    this._ctx.fillRect(x, y, this._cellWidth, this._cellWidth);
   }
-  renderPortal(row, col) {
+  renderPortal(x, y) {
     this._ctx.fillStyle = 'red';
-    this._ctx.fillRect(row, col, this._cellWidth, this._cellWidth);
+    this._ctx.fillRect(x, y, this._cellWidth, this._cellWidth);
   }
-  renderEmpty(row, col) {
+  renderEmpty(x, y) {
     this._ctx.fillStyle = '#000';
-    this._ctx.strokeRect(row, col, this._cellWidth, this._cellWidth);
+    this._ctx.strokeRect(x, y, this._cellWidth, this._cellWidth);
   }
-  renderCoin(row, col) {
+  renderCoin(x, y) {
     this._ctx.fillStyle = '#000';
-    this._ctx.strokeRect(row, col, this._cellWidth, this._cellWidth);
+    this._ctx.strokeRect(x, y, this._cellWidth, this._cellWidth);
     this._ctx.beginPath();
-    this._ctx.arc(row + 9, col + 9, 3, 0, 2 * Math.PI, false);
+    this._ctx.arc(x + 9, y + 9, 3, 0, 2 * Math.PI, false);
     this._ctx.fillStyle = 'red';
     this._ctx.fill();
     this._ctx.stroke();
   }
-  initCoordsObstacle() {
-    this.loopByMapTemplate((row, col, value) => {
-      value === MAP_STATUS.FIGURE
-        ? this.coordsObstacle.push([row, this._cellWidth + row, col, this._cellWidth + col])
-        : undefined;
-    });
+  getIndexPointByCoords(x, y) {
+    const geAccessCellByRowAndCol = (x, y) => {
+      if (this._mapCoords.map[x] && this._mapCoords.map[x][y] >= 0) {
+        return [];
+      }
+      return false;
+    };
+    const top = geAccessCellByRowAndCol(x - 1, y);
+    const right = geAccessCellByRowAndCol(x, y + 1);
+    const bottom = geAccessCellByRowAndCol(x + 1, y);
+    const left = geAccessCellByRowAndCol(x, y - 1);
+    return [ top, right, bottom, left ];
+  }
+  initAllMapPoints() {
+    this.loopMapTemplate(({ coords, value, index }) => this.mapAllPoints.push({ coords, value, index }));
   }
   initPortalCoords() {
-    this.loopByMapTemplate((row, col, value) => {
-      value === MAP_STATUS.PORTAL
-        ? this.portalCoords.push([row, this._cellWidth + row, col, this._cellWidth + col])
-        : undefined;
-    });
+    this.portalCoords = this.mapAllPoints
+      .filter(({ value }) => value === MAP_STATUS.PORTAL)
+      .map(({ coords: [ x, y ] }) => [x, this._cellWidth + x, y, this._cellWidth + y]);
+  }
+  initCoordsObstacle() {
+    this.coordsObstacle = this.mapAllPoints
+      .filter(({ value }) => value === MAP_STATUS.FIGURE)
+      .map(({ coords: [ x, y ] }) => [x, this._cellWidth + x, y, this._cellWidth + y]);
   }
   initCoordsCoin() {
-    this.loopByMapTemplate((row, col, value) => {
-      value === MAP_STATUS.COIN
-        ? this.coinCoords.push([row, this._cellWidth + row, col, this._cellWidth + col])
-        : undefined;
-    });
+    this.coinCoords = this.mapAllPoints
+      .filter(({ value }) => value === MAP_STATUS.COIN)
+      .map(({ coords: [ x, y ] }) => [x, this._cellWidth + x, y, this._cellWidth + y]);
   }
-  loopByMapTemplate(cb) {
-    const { width, height } = this._canvas;
-    for (let row = 0, rowIdx = 0; row < width; row += this._cellWidth, rowIdx++) {
-      for (let col = 0, colIdx = 0; col < height; col += this._cellWidth, colIdx++) {
-        const value = this._mapTemplate[colIdx][rowIdx];
-        cb(row, col, value);
+  initCoordsCrossRoad() {
+
+  }
+  loopMapTemplate(cb) {
+    const rowLen = this._mapTemplate.length;
+    const colLen = this._mapTemplate[0].length;
+    for (let y = 0, row = 0; row < rowLen; y += this._cellWidth, row++) {
+      for (let x = 0, col = 0; col < colLen; x += this._cellWidth, col++) {
+        cb({
+          value: this._mapTemplate[row][col],
+          coords: [ x, y ],
+          index: [ row, col ]
+        });
       }
     }
   }
   renderMap() {
     this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-    this.loopByMapTemplate((row, col, value) => this.renderFunctionsByKey[value](row, col));
+    this.loopMapTemplate(({ coords: [ x, y ], value }) => this.renderFunctionsByKey[value](x, y));
   }
   render(cb) {
     this._ctx.strokeStyle = 'black';
