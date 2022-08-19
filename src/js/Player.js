@@ -19,11 +19,11 @@ export class EventEmitter {
 
 export class PlayerInterface extends EventEmitter {
   static CELL_SIZE = 20;
-  constructor(canvas, ctx, { obstacle, portal, coin, map }, color = 'yellow') {
+  constructor(canvas, ctx, { obstacle, portal, coin, map, crossRoad }, color = 'yellow') {
     super();
     this._canvas = canvas;
     this._ctx = ctx;
-    this._mapCoords = { obstacle, portal, coin, map };
+    this._mapCoords = { obstacle, portal, coin, map, crossRoad };
     this._diffCoords = { x: 2, y: 2 };
     this._style = { color, lineWidth: 1, radius: 7 };
     this._figureSize = this._style.radius + (this._style.lineWidth * 2);
@@ -200,13 +200,13 @@ export class Hunter extends PlayerInterface {
   static KEY_MOVING = [ 'ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft' ];
   constructor(...args) {
     super(...args);
-    // this.initHunterMove();
+    this.initHunterMove();
     this._countRows = this._canvas.width / PlayerInterface.CELL_SIZE;
     this._countCols = this._canvas.height / PlayerInterface.CELL_SIZE;
   }
-  // initHunterMove() {
-  //   this.getMapPointsByCurrentCords();
-  // }
+  initHunterMove() {
+    this.getMapPointsByCurrentCords();
+  }
   getMapRowColIndexByCoords(x, y) {
     return [
       Math.round(y / PlayerInterface.CELL_SIZE),
@@ -228,26 +228,28 @@ export class Hunter extends PlayerInterface {
   }
   getNewVectorWay([ top, right, bottom, left ]) {
     console.log(1111);
-    // const lastMoveHistory = this._moveHistory[0];
+    const lastMoveHistory = this._moveHistory[0];
+    console.log(lastMoveHistory);
     const res = [
       { type: 'ArrowDown', value: bottom },
       { type: 'ArrowUp', value: top },
       { type: 'ArrowRight', value: right },
       { type: 'ArrowLeft', value: left },
-    //  && keyMove.type !== lastMoveHistory
-    ].filter((keyMove) => keyMove.value);
+    ].filter((keyMove) => keyMove.value && keyMove.type !== lastMoveHistory);
     return res[Math.floor(Math.random() * res.length)].type;
   }
-  // getMapPointsByCurrentCords() {
-  //   const { x, y } = this._coords;
-  //   const [ row, col ] = this.getMapRowColIndexByCoords(x, y);
-  //   const [ topV, rightV, bottomV, leftV ] = this.getVectorsByCurrentCoords(row, col);
-  //   const newVectorWay = this.getNewVectorWay([ topV, rightV, bottomV, leftV ]);
-  //   this.moveActionByKey(newVectorWay, () => {})()
-  //     .on('stopMoving', () => {
-  //       this.getMapPointsByCurrentCords();
-  //     });
-  // }
+  getMapPointsByCurrentCords() {
+    const { x, y } = this._coords;
+    console.log(y - this._figureSize - 1, x - this._figureSize - 1);
+    const findObj = this._mapCoords.crossRoad.find(({ coords }) =>
+      coords[0] === x - this._figureSize - 1 && coords[1] === y - this._figureSize - 1);
+
+    const vectorsList = !findObj ? [ false, true, false, true ] : findObj.accessWays;
+    const newVectorWay = this.getNewVectorWay(vectorsList);
+    this.moveActionByKey(newVectorWay, () => {}, () => {
+      this.getMapPointsByCurrentCords();
+    });
+  }
   keyDownHandler(e) {
     if (!Player.KEY_MOVING.includes(e.code)) {
       console.warn(`Access keys for moving: ${Player.KEY_MOVING}`);

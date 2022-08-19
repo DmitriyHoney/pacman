@@ -23,7 +23,7 @@ export class GameBoard {
     this.initPortalCoords();
     this.initCoordsObstacle();
     this.initCoordsCoin();
-    // this.initCoordsCrossRoad();
+    this.initCoordsCrossRoad();
   }
 
   renderFigure(x, y) {
@@ -79,7 +79,23 @@ export class GameBoard {
       .map(({ coords: [ x, y ] }) => [x, this._cellWidth + x, y, this._cellWidth + y]);
   }
   initCoordsCrossRoad() {
-
+    const isWayCell = (value) => value === MAP_STATUS.COIN || value === MAP_STATUS.EMPTY;
+    const getAccessPoint = (row, col) => {
+      if (!this._mapTemplate[row] || this._mapTemplate[row][col] === undefined) return false;
+      return isWayCell(this._mapTemplate[row][col]) ? this._mapTemplate[row][col] : false;
+    };
+    const isCrossRoad = (row, col) => ([
+      getAccessPoint(row - 1, col),
+      getAccessPoint(row, col + 1),
+      getAccessPoint(row + 1, col),
+      getAccessPoint(row, col - 1)
+    ]);
+    this.crossRoadCoords = this.mapAllPoints
+      .filter(({ index: [ row, col ], value }) => {
+        const crossRoadList = isCrossRoad(row, col).filter((el) => el);
+        return crossRoadList.length > 1 && isWayCell(value);
+      })
+      .map((point) => ({ ...point, accessWays: isCrossRoad(point.index[0], point.index[1]) }));
   }
   loopMapTemplate(cb) {
     const rowLen = this._mapTemplate.length;
