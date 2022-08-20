@@ -90,12 +90,28 @@ export class GameBoard {
       getAccessPoint(row + 1, col),
       getAccessPoint(row, col - 1)
     ]);
+    // this.crossRoadCoords = this.mapAllPoints
+    //   .filter(({ index: [ row, col ], value }) => {
+    //     const crossRoadList = isCrossRoad(row, col).filter((el) => el || el === 0);
+    //     return crossRoadList.length >= 2 && isWayCell(value);
+    //   })
+    //   .map((point) => ({
+    //     ...point,
+    //     coordsRange: [
+    //       point.coords[0], this._cellWidth + point.coords[0],
+    //       point.coords[1], this._cellWidth + point.coords[1]],
+    //     accessWays: isCrossRoad(point.index[0], point.index[1])
+    //   }));
+
     this.crossRoadCoords = this.mapAllPoints
-      .filter(({ index: [ row, col ], value }) => {
-        const crossRoadList = isCrossRoad(row, col).filter((el) => el);
-        return crossRoadList.length > 1 && isWayCell(value);
-      })
-      .map((point) => ({ ...point, accessWays: isCrossRoad(point.index[0], point.index[1]) }));
+      .map((point) => ({
+        ...point,
+        coordsRange: [
+          point.coords[0], this._cellWidth + point.coords[0],
+          point.coords[1], this._cellWidth + point.coords[1]],
+        accessWays: isCrossRoad(point.index[0], point.index[1])
+      }))
+      .filter((point) => point.accessWays.filter((el) => el || el === 0).length >= 2);
   }
   loopMapTemplate(cb) {
     const rowLen = this._mapTemplate.length;

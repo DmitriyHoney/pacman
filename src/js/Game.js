@@ -20,6 +20,7 @@ export class Game {
     );
 
     this._hunter1 = new Hunter(
+      { x: 1.5, y: 1.5 },
       canvas,
       ctx, {
         obstacle: coordsObstacle,
@@ -29,6 +30,32 @@ export class Game {
         crossRoad: crossRoadCoords
       },
       'green'
+    );
+
+    this._hunter2 = new Hunter(
+      { x: 2.5, y: 2.5 },
+      canvas,
+      ctx, {
+        obstacle: coordsObstacle,
+        portal: portalCoords,
+        coin: coinCoords,
+        map: mapTemplate,
+        crossRoad: crossRoadCoords
+      },
+      'red'
+    );
+
+    this._hunter3 = new Hunter(
+      { x: 4, y: 2.5 },
+      canvas,
+      ctx, {
+        obstacle: coordsObstacle,
+        portal: portalCoords,
+        coin: coinCoords,
+        map: mapTemplate,
+        crossRoad: crossRoadCoords
+      },
+      'blue'
     );
 
     this._player.on('eatCoin', ({ x, y }) => {
@@ -43,6 +70,8 @@ export class Game {
     this._board.render(() => {
       this._player.render();
       this._hunter1.render();
+      this._hunter2.render();
+      this._hunter3.render();
     });
   }
 }

@@ -27,7 +27,7 @@ export class PlayerInterface extends EventEmitter {
     this._diffCoords = { x: 2, y: 2 };
     this._style = { color, lineWidth: 1, radius: 7 };
     this._figureSize = this._style.radius + (this._style.lineWidth * 2);
-    this._coords = { x: this._canvas.width / 2, y: 90 };
+    this._coords = { x: (this._canvas.width / 2) - this._figureSize + 1, y: 90 };
     this.movingInterval = undefined;
     this._moveHistory = [];
     this._historyKeyDown = undefined;
@@ -41,6 +41,10 @@ export class PlayerInterface extends EventEmitter {
   }
   clearMoveInterval() {
     if (this.moveInterval) clearInterval(this.moveInterval);
+  }
+  checkCrossRoad(x, y) {
+    return this._mapCoords.crossRoad.find(({ coordsRange: [x1, x2, y1, y2 ] }) =>
+      x >= x1 && x <= x2 && y >= y1 && y <= y2);
   }
   updateHistoryKeyDown(keyCode) {
     this._historyKeyDown = keyCode;
@@ -198,11 +202,13 @@ export class Player extends PlayerInterface {
 
 export class Hunter extends PlayerInterface {
   static KEY_MOVING = [ 'ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft' ];
-  constructor(...args) {
+  constructor(diiffCoords = { x: 2, y: 2 }, ...args) {
     super(...args);
-    this.initHunterMove();
+    this._diffCoords = diiffCoords;
+    this._coords = { x: (this._canvas.width / 2) + this._figureSize + 1, y: 240 };
     this._countRows = this._canvas.width / PlayerInterface.CELL_SIZE;
     this._countCols = this._canvas.height / PlayerInterface.CELL_SIZE;
+    this.initHunterMove();
   }
   initHunterMove() {
     this.getMapPointsByCurrentCords();
@@ -226,27 +232,35 @@ export class Hunter extends PlayerInterface {
     const left = geAccessCellByRowAndCol(row, col - 1);
     return [ top, right, bottom, left ];
   }
+  getRevertsHistory(historyName) {
+    const res = {
+      'ArrowUp': 'ArrowDown',
+      'ArrowRight': 'ArrowLeft',
+      'ArrowLeft': 'ArrowRight',
+      'ArrowDown': 'ArrowUp'
+    };
+    return res[historyName];
+  }
   getNewVectorWay([ top, right, bottom, left ]) {
-    console.log(1111);
-    const lastMoveHistory = this._moveHistory[0];
-    console.log(lastMoveHistory);
+    const lastMoveHistory = this.getRevertsHistory(this._moveHistory[0]);
     const res = [
-      { type: 'ArrowDown', value: bottom },
       { type: 'ArrowUp', value: top },
       { type: 'ArrowRight', value: right },
       { type: 'ArrowLeft', value: left },
+      { type: 'ArrowDown', value: bottom },
     ].filter((keyMove) => keyMove.value && keyMove.type !== lastMoveHistory);
     return res[Math.floor(Math.random() * res.length)].type;
   }
-  getMapPointsByCurrentCords() {
+  getMapPointsByCurrentCords(vectors) {
     const { x, y } = this._coords;
-    console.log(y - this._figureSize - 1, x - this._figureSize - 1);
-    const findObj = this._mapCoords.crossRoad.find(({ coords }) =>
-      coords[0] === x - this._figureSize - 1 && coords[1] === y - this._figureSize - 1);
-
+    const findObj = this.checkCrossRoad(x, y);
     const vectorsList = !findObj ? [ false, true, false, true ] : findObj.accessWays;
-    const newVectorWay = this.getNewVectorWay(vectorsList);
-    this.moveActionByKey(newVectorWay, () => {}, () => {
+    const newVectorWay = vectors?.accessWays
+      ? this.getNewVectorWay(vectors.accessWays) : this.getNewVectorWay(vectorsList);
+
+    this.moveActionByKey(newVectorWay, (x, y) => {
+
+    }, () => {
       this.getMapPointsByCurrentCords();
     });
   }
