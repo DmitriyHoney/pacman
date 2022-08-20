@@ -258,9 +258,7 @@ export class Hunter extends PlayerInterface {
     const newVectorWay = vectors?.accessWays
       ? this.getNewVectorWay(vectors.accessWays) : this.getNewVectorWay(vectorsList);
 
-    this.moveActionByKey(newVectorWay, (x, y) => {
-
-    }, () => {
+    this.moveActionByKey(newVectorWay, () => {}, () => {
       this.getMapPointsByCurrentCords();
     });
   }
